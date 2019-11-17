@@ -1,7 +1,12 @@
-*.ss~
-*.ss#*
-.#*.ss
+*.rkt~
+*.rkt#*
+.#*.rkt
 
 *.scm~
 *.scm#*
 .#*.scm
+
+
+*.rkt~
+*.rkt#*
+.#*.rkt
