@@ -19,6 +19,7 @@
 (equals? '(9 u) '())
 (equals? '(9 u) '(9 u))
 
+;; Ex 2.55
 ;; note that the first item of this string? list? is itself a '
 ;; I believe it is because it expands to (quote 'abcde)
 (car ''abcde)
@@ -82,6 +83,7 @@
         (else
          (error "unknown expression type -- DERIV" exp))))
 
+(write '(deriv '(+ x 3) 'x))(newline)
 (deriv '(+ x 3) 'x)
 
 ;; Ex 2.56
@@ -98,6 +100,7 @@
 (define (exponentiation? exponentiation)
   (and (pair? exponentiation) (eq? (car exponentiation) '**)))
 
+(display "y to the power x")(newline)
 (make-exponentiation 'y 'x)
 (base (make-exponentiation 'y 'x))
 (exponent (make-exponentiation 'y 'x))
@@ -159,10 +162,11 @@
 
 (equals? '(* 3 2) (multiplicand2 '(* 4 3 2)))
 (eq? 2 (augend2 '(+ 4 2)))
-(equals? '(+ 1 2 3 4) (augend2 '(+ 1 1 2 3 4)))
+;;(equals? '(+ 1 2 3 4) (augend2 '(+ 1 1 2 3 4)))
 
 ;; (equals? '(+ 3 2) (augend2 '(+ 4 3 2)))
 ;; (deriv2 '(* x y (+ x 3)) 'x)
 ;; (deriv2 '(* x x x) 'x)
 
 ;; sets
+(write "hello")
