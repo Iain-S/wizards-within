@@ -551,4 +551,132 @@ list_cheeky_cycles
 
 (cs-cycles? list_cheeky_cycles)
 (cs-cycles? list_cycles)
-(cs-cycles? (list 1 2 3 4 5))
+(not (cs-cycles? (list 1 2 3 4 5)))
+
+; ToDo There's a much smarter way to do this in constant space and linear time.
+
+"3.20 - skipping"
+; More environment diagrams
+
+"3.21 : Queues"
+
+(define (front-ptr queue) (car queue))
+(define (rear-ptr queue) (cdr queue))
+(define (set-front-ptr! queue item) 
+  (set-car! queue item))
+(define (set-rear-ptr! queue item) 
+  (set-cdr! queue item))
+
+(define (empty-queue? queue) 
+  (null? (front-ptr queue)))
+
+(define (make-queue) (cons '() '()))
+
+(define (front-queue queue)
+  (if (empty-queue? queue)
+      (error "FRONT called with an 
+              empty queue" queue)
+      (car (front-ptr queue))))
+
+; make a new pair with the item to be inserted and the empty list '()
+; if the queue was empty, set both pointers to this new pair
+; else, set the cdr of the last item to this new pair and move the last item pointer
+(define (insert-queue! queue item)
+  (let ((new-pair (cons item '())))
+    (cond ((empty-queue? queue)
+           (set-front-ptr! queue new-pair)
+           (set-rear-ptr! queue new-pair)
+           queue)
+          (else (set-cdr! (rear-ptr queue) 
+                          new-pair)
+                (set-rear-ptr! queue new-pair)
+                queue))))
+
+; to take an item from the front of the queue, modify the front pointer and let the
+; garbage collector do the rest
+(define (delete-queue! queue)
+  (cond ((empty-queue? queue)
+         (error "DELETE! called with 
+                 an empty queue" queue))
+        (else (set-front-ptr! 
+               queue 
+               (cdr (front-ptr queue)))
+              queue)))
+
+(define q1 (make-queue))
+
+(insert-queue! q1 'a)
+
+; This is where the exercise actually begins.
+(define (print-queue q)
+  (display (if (empty-queue? q)
+               '()
+               (front-ptr q)))
+  (display "\n"))
+(print-queue q1)
+
+(insert-queue! q1 'b)
+;((a b) b)
+
+(delete-queue! q1)
+;((b) b)
+
+(delete-queue! q1)
+;(() b)
+
+(print-queue q1)
+
+"Exercise 3.22 : Queues as procedures with local state"
+
+; Complete the definition of make-queue-2 and provide implementations
+; of the queue operations using this representation.
+(define (make-queue-2)
+  (let ((front-ptr '())
+        (rear-ptr '()))
+    (define (front)
+      (if (null? front-ptr)
+          (error "FRONT called on empty queue")
+          (car front-ptr)))
+    (define (insert item)
+      (let ((new-pair (cons item '())))
+        (cond ((null? front-ptr)
+               (set! front-ptr new-pair)
+               (set! rear-ptr new-pair))
+              (else (set-cdr! rear-ptr new-pair)
+                    (set! rear-ptr new-pair)))))
+    (define (dispatch m)
+      (cond ((eq? m 'empty?) (null? front-ptr))
+            ((eq? m 'front) (front))
+            ((eq? m 'print) (+ 1 1))
+            ((eq? m 'insert) insert)
+            ((eq? m 'delete) (+ 1 1))))
+    dispatch))
+
+(define (delete-queue-2! q)
+  (q 'delete))
+
+(define (insert-queue-2! q item)
+  ((q 'insert) item))
+
+(define (empty-queue-2? q)
+  (q 'empty?))
+
+(define (front-queue-2 q)
+  (q 'front))
+
+(define (print-queue-2 q)
+  (q 'print))
+
+; Test that it works
+"Testing q2"
+(define q2 (make-queue-2))
+(empty-queue-2? q2)
+(insert-queue-2! q2 'a)
+;(print-queue-2 q2)
+(eq? 'a (front-queue-2 q2))
+
+"Exercise 3.23 Deques"
+(define deqf (cons 'a '()))
+(define deqe (cons 'b deqf))
+(set-cdr! deqf deqe)
+(cons deqf deqe)
