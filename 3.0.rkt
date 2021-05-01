@@ -551,9 +551,16 @@ list_cheeky_cycles
 
 (cs-cycles? list_cheeky_cycles)
 (cs-cycles? list_cycles)
-(cs-cycles? (list 1 2 3 4 5))
+(not (cs-cycles? (list 1 2 3 4 5)))
 
-;; Queues
+; ToDo There's a much smarter way to do this in constant space and linear time.
+
+
+"3.20 - done on paper"
+; More environment diagrams
+
+
+; Queues
 
 (define (front-ptr queue) (car queue))
 
@@ -576,6 +583,9 @@ list_cheeky_cycles
               empty queue" queue)
       (car (front-ptr queue))))
 
+; make a new pair with the item to be inserted and the empty list '()
+; if the queue was empty, set both pointers to this new pair
+; else, set the cdr of the last item to this new pair and move the last item pointer
 (define (insert-queue! queue item)
   (let ((new-pair (cons item '())))
     (cond ((empty-queue? queue)
@@ -587,6 +597,8 @@ list_cheeky_cycles
                 (set-rear-ptr! queue new-pair)
                 queue))))
 
+; to take an item from the front of the queue, modify the front pointer and let the
+; garbage collector do the rest
 (define (delete-queue! queue)
   (cond ((empty-queue? queue)
          (error "DELETE! called with 
@@ -611,7 +623,6 @@ list_cheeky_cycles
 (delete-queue! q1)
 (print-queue q1)
 
-
 "Exercise 3.22"
 (define (make-queue2)
   (let ((front-ptr '())
@@ -622,8 +633,7 @@ list_cheeky_cycles
                (set! front-ptr new-pair)
                (set! rear-ptr new-pair))
               (else (set-cdr! rear-ptr new-pair)
-                    (set! rear-ptr new-pair)))
-        )
+                    (set! rear-ptr new-pair))))
       front-ptr)
     (define (delete)
       ; remove the first item
@@ -638,7 +648,6 @@ list_cheeky_cycles
     dispatch))
 
 (define q2 (make-queue2))
-;(define q3 (make-queue2))
 
 ;; we won't bother with convenience functions for these
 ((q2 'insert) 77)
@@ -650,6 +659,9 @@ list_cheeky_cycles
 (q2 'isempty)
 "done"
 
-"Exercise 3.23"
-"No, I am not writing a deque"
+"Exercise 3.23 Deques"
+(define deqf (cons 'a '()))
+(define deqe (cons 'b deqf))
+(set-cdr! deqf deqe)
+(cons deqf deqe)
 
