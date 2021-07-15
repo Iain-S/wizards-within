@@ -660,8 +660,46 @@ list_cheeky_cycles
 "done"
 
 "Exercise 3.23 Deques"
-(define deqf (cons 'a '()))
-(define deqe (cons 'b deqf))
-(set-cdr! deqf deqe)
-(cons deqf deqe)
+; Operations on deques are the constructor make-deque,
+; the predicate empty-deque?, selectors front-deque and rear-deque,
+; and mutators front-insert-deque!, rear-insert-deque!,
+; front-delete-deque!, rear-delete-deque!. Show how to represent
+; deques using pairs, and give implementations of the operations.
+; All operations should be accomplished in Θ(1) steps.
 
+;(define deqf (cons 'a '()))
+;(define deqe (cons 'b deqf))
+;(set-cdr! deqf deqe)
+;(cons deqf deqe)
+
+; We're doing a pair-based implementation
+(define (make-deque)
+  (cons '() '()))
+
+; If the front is empty then the deque is empty
+(define (empty-deque? deque)
+  (null? (car deque)))
+
+; Do this a 
+(define (rear-insert-deque! deque item)
+  (let ((new-pair (cons item '())))
+    (begin
+      (if (empty-deque? deque)
+        (set-front-ptr! deque new-pair)  
+        (set-cdr! (rear-ptr deque) new-pair))
+      (set-rear-ptr! deque new-pair)))
+      deque)
+
+
+; Testing
+
+;; May be useful to have a simple way to print the deque contents 
+(define (display-deque deque)
+  (display (front-ptr deque)))
+
+(define my-deque (make-deque))
+(empty-deque? my-deque)
+(rear-insert-deque! my-deque 4)
+(display-deque my-deque)
+
+;; ToDo next - front-deque and rear-deque
