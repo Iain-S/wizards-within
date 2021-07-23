@@ -667,6 +667,10 @@ list_cheeky_cycles
 ; deques using pairs, and give implementations of the operations.
 ; All operations should be accomplished in Θ(1) steps.
 
+; Deques are often implemented as doubly-linked lists so
+; we'll keep the front and rear ptrs and each item will be
+; '(previous-ptr item next-ptr)
+
 ;(define deqf (cons 'a '()))
 ;(define deqe (cons 'b deqf))
 ;(set-cdr! deqf deqe)
@@ -680,26 +684,83 @@ list_cheeky_cycles
 (define (empty-deque? deque)
   (null? (car deque)))
 
-; Do this a 
+; Helpers
+(define (get-front-deque deque)
+  (car deque))
+
+(define (get-rear-deque deque)
+  (cdr deque))
+
+; More helpers
+(define (set-front-deque! deque triple)
+  (set-car! deque triple))
+
+(define (set-rear-deque! deque triple)
+  (set-cdr! deque triple))
+
+; Add an item to the rear of the deque
 (define (rear-insert-deque! deque item)
-  (let ((new-pair (cons item '())))
+  ; '(previous-rear . item . () . ())
+  (let ((new-triple (list (get-rear-deque deque) item '())))
     (begin
       (if (empty-deque? deque)
-        (set-front-ptr! deque new-pair)  
-        (set-cdr! (rear-ptr deque) new-pair))
-      (set-rear-ptr! deque new-pair)))
+          ; then
+          (set-front-deque! deque new-triple)  
+          ; else
+          (set-car! (cddr (get-rear-deque deque)) new-triple))
+      (set-rear-ptr! deque new-triple)))
       deque)
 
+; Add an item to the front of the deque
+(define (front-insert-deque! deque item)
+  ; '(() . item . previous-front . ())
+  (let ((new-triple (list '() item (get-front-deque deque))))
+    (begin
+      (if (empty-deque? deque)
+        (set-rear-deque! deque new-triple)  
+        (set-car! (get-front-deque deque) new-triple))
+      (set-front-ptr! deque new-triple)))
+      deque)
+
+; To Do
+(define (rear-delete-deque! deque)
+  (cond ((empty-deque? deque)
+         (error "Cannot delete from an empty deque"))
+        ((null? (caddr (get-front-deque deque)))
+         ; only one element
+         (begin (set-front-deque! deque '())
+                (set-rear-deque! deque '())))
+        (else (begin (set-rear-deque! deque (car (get-rear-deque deque)))
+                     (set-car! (cddr (get-rear-deque deque)) '())))))
+
+; ToDo ...
+(define (front-delete-deque! deque)
+  1)
 
 ; Testing
 
 ;; May be useful to have a simple way to print the deque contents 
 (define (display-deque deque)
-  (display (front-ptr deque)))
+  (define (deque-to-list node)
+    (if (null? (caddr node))
+        (list (cadr node))
+        (cons (cadr node) (deque-to-list (caddr node)))))
+  (display (deque-to-list (car deque)))
+  (display "\n"))
+
 
 (define my-deque (make-deque))
 (empty-deque? my-deque)
 (rear-insert-deque! my-deque 4)
 (display-deque my-deque)
+(rear-insert-deque! my-deque 99)
+(front-insert-deque! my-deque 100)
+;(get-rear-deque my-deque)
+(display-deque my-deque)
+(rear-delete-deque! my-deque)
+(rear-delete-deque! my-deque)
+(rear-delete-deque! my-deque)
+my-deque
 
-;; ToDo next - front-deque and rear-deque
+
+
