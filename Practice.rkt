@@ -10,6 +10,10 @@
 
 ;; M-C-SPACE : select forward an S expression.
 
+; So that we can import them in hash-require.rkt
+(#%provide balance)
+(#%provide bnew-withdraw)
+
 (define balance 101)
 
 (define (withdraw amount)
@@ -25,14 +29,14 @@
 ;; M-Backspace : delete backwards one word
 
 ;; ESC,t : transpose words (no need to highlight)
-me swap
+;me swap
 
 ;; M-( / [ / { : wrap selection in parens
 
 ;;
 (+ 1 2)
 
-try to delete these words
+;try to delete these words
 
 (define bbalance 500)
 (define (bnew-withdraw) 
