@@ -722,7 +722,7 @@ list_cheeky_cycles
       (set-front-ptr! deque new-triple)))
       deque)
 
-; To Do
+
 (define (rear-delete-deque! deque)
   (cond ((empty-deque? deque)
          (error "Cannot delete from an empty deque"))
@@ -763,4 +763,133 @@ list_cheeky_cycles
 my-deque
 
 
+; 3.3.3. Representing Tables
+
+;; Two-dimensional "local" tables
+(define (assoc key records)
+  (cond ((null? records) false)
+        ((equal? key (caar records)) 
+         (car records))
+        (else (assoc key (cdr records)))))
+
+;; This is provided in 3.3.3.
+(define (make-table)
+  (let ((local-table (list '*table*)))
+    (define (lookup key-1 key-2)
+      (let ((subtable 
+             (assoc key-1 (cdr local-table))))
+        (if subtable
+            (let ((record 
+                   (assoc key-2 
+                          (cdr subtable))))
+              (if record (cdr record) false))
+            false)))
+    (define (insert! key-1 key-2 value)
+      (let ((subtable 
+             (assoc key-1 (cdr local-table))))
+        (if subtable
+            (let ((record 
+                   (assoc key-2 
+                          (cdr subtable))))
+              (if record
+                  (set-cdr! record value)
+                  (set-cdr! 
+                   subtable
+                   (cons (cons key-2 value)
+                         (cdr subtable)))))
+            (set-cdr! 
+             local-table
+             (cons (list key-1
+                         (cons key-2 value))
+                   (cdr local-table)))))
+      'ok)
+    (define (dispatch m)
+      (cond ((eq? m 'lookup-proc) lookup)
+            ((eq? m 'insert-proc!) insert!)
+            (else (error "Unknown operation: 
+                          TABLE" m))))
+    dispatch))
+
+(define operation-table (make-table))
+(define get (operation-table 'lookup-proc))
+(define put (operation-table 'insert-proc!))
+
+(put 4 5 "a value")
+(put 'a 'b "another value")
+(get 4 5)
+
+;; Exercise 3.24
+;; Define a make-table procedure that takes same-key? as an argument.
+(define (my-assoc key records is-equal?)
+  (cond ((null? records) false)
+        ((is-equal? key (caar records)) 
+         (car records))
+        (else (my-assoc key (cdr records) is-equal?))))
+
+(define (make-my-table same-key?)
+  (let ((local-table (list '*table*))
+        (asso (lambda (key records) (my-assoc key records same-key?))))
+    (define (lookup key-1 key-2)
+      (let ((subtable 
+             (asso key-1 (cdr local-table))))
+        (if subtable
+            (let ((record 
+                   (asso key-2 
+                          (cdr subtable))))
+              (if record (cdr record) false))
+            false)))
+    (define (insert! key-1 key-2 value)
+      (let ((subtable 
+             (asso key-1 (cdr local-table))))
+        (if subtable
+            (let ((record 
+                   (asso key-2 
+                          (cdr subtable))))
+              (if record
+                  (set-cdr! record value)
+                  (set-cdr! 
+                   subtable
+                   (cons (cons key-2 value)
+                         (cdr subtable)))))
+            (set-cdr! 
+             local-table
+             (cons (list key-1
+                         (cons key-2 value))
+                   (cdr local-table)))))
+      'ok)
+    (define (dispatch m)
+      (cond ((eq? m 'lookup-proc) lookup)
+            ((eq? m 'insert-proc!) insert!)
+            (else (error "Unknown operation: 
+                          TABLE" m))))
+    dispatch))
+
+(define (plus-minus-one? a b)
+  (display "plus-minus-one?")
+  (display " ")
+  (display a)
+  (display " ")
+  (display b)
+  (display "\n")
+  (< (abs (- a b)) 1))
+
+(plus-minus-one? 4.9 4)
+(plus-minus-one? 4 4.9)
+(not (plus-minus-one? 5 4))
+(not (plus-minus-one? 4 5))
+
+
+(define my-op-table (make-my-table plus-minus-one?))
+(define my-get (my-op-table 'lookup-proc))
+(define my-put (my-op-table 'insert-proc!))
+
+"putting"
+(my-put 4 5 "a value")
+;(my-put 'a 'b "another value")
+
+"getting"
+(my-get 4.1 5.7)
+
+;; Exercise 3.25
+;; N-dimensional tables
 
