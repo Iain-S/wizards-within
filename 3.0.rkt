@@ -922,7 +922,8 @@ my-deque
 (define (lookup-2 keys table)
   (cond ((null? table) false)
         ((null? keys) table)
-        ((equal? (caadr table) (car keys)) (lookup-2 (cdr keys) (car (cdr table))))))
+        ((equal? (caadr table) (car keys)) (lookup-2 (cdr keys) (car (cdr table))))
+        (else false)))
 
 (newline)
 "Test lookup-2"
@@ -946,12 +947,36 @@ my-deque
                                                     (cons 2 "no")
                                                     (list 4 (list 5 (cons 6 "yes"))))))
 
+(define (insert-2! keys value table)
+  (let ((found (lookup-2 (list (car keys)) table)))
+    (if found
+        (insert-2! (cdr keys) value found)
+        (let ((new-subtable (create-subtable keys value)))
+          (set-cdr! table  ; insert it behind '*table*
+                    (cons new-subtable
+                          (cdr table)))))))
+
+;; for level 
+(define (create-subtable keys value)
+  (if (null? (cdr keys))
+      (cons (car keys) value)
+      (list (car keys) (create-subtable (cdr keys) value))))
+
+(newline)
+"Test create-subtable"
+(equal? (create-subtable (list 1) 'a) (cons 1 'a))
+(equal? (create-subtable (list 1 2) 'a) (list 1 (cons 2 'a)))
+
 ; Insert value into table at the position given by keys
 ; (a position that must not exist already)
 (define (insert-1! keys value table)
-  (if (null? (keys))
-      (set-cdr! table (cons (cons 1 "yes") (cdr table)))
-      (error "error!!")))
+  (let ((found (lookup-1 (list (car keys)) (cdr table))))
+    (if found
+        (insert-2! (cdr keys) value found) ; the first key is already there
+        (let ((new-subtable (create-subtable keys value)))
+          (set-cdr! table  ; insert it behind '*table*
+                    (cons new-subtable
+                          (cdr table)))))))
 
 (newline)
 "Test insert-1!"
@@ -973,44 +998,12 @@ my-deque
         (if answer
             (begin (set-cdr! answer value) 'overwritten)
             (begin (insert-1! keys value local-table) 'ok))))  
-;    (define (lookup key-1 key-2)
-;      (let ((subtable 
-;             (my-assoc key-1 (cdr local-table))))
-;        (if subtable
-;            (let ((record 
-;                   (my-assoc key-2 
-;                          (cdr subtable))))
-;              (if record (cdr record) false))
-;            false)))
-;    (define (insert! key-1 key-2 value)
-;      (let ((subtable 
-;             (my-assoc key-1 (cdr local-table))))
-;        (if subtable
-;            (let ((record 
-;                   (my-assoc key-2 
-;                          (cdr subtable))))
-;              (if record
-;                  (set-cdr! record value)
-;                  (set-cdr! 
-;                   subtable
-;                   (cons (cons key-2 value)
-;                         (cdr subtable)))))
-;            (set-cdr! 
-;             local-table
-;             (cons (list key-1
-;                         (cons key-2 value))
-;                   (cdr local-table)))))
-;      'ok)
     (define (dispatch m)
       (cond ((eq? m 'lookup-proc) lookup)
             ((eq? m 'insert-proc!) insert!)
             (else (error "Unknown operation: 
                           TABLE" m))))
     dispatch))
-
-;(define operation-table (make-table))
-;(define get (operation-table 'lookup-proc))
-;(define put (operation-table 'insert-proc!))
 
 (newline)
 "Test make-nd-table"
@@ -1022,17 +1015,33 @@ my-deque
 ; Insert into empty table
 (put-nd! (list 1) "yes")
 (equal? (get-nd (list 1)) "yes")
+(get-nd (list 1))
 
+(newline)
 ; Overwrite value
 (put-nd! (list 1) "nope")
 (equal? (get-nd (list 1)) "nope")
 
+"multiline
+coment?"
 ; Insert into populated table
 (equal? 'ok (put-nd! (list 'a 'b 'c) "yellow"))
 (equal? (get-nd (list 'a 'b 'c)) "yellow")
 
-;(put-nd! (list 'a "b" 3) 999)
-;(= (get-nd (list 'a "b" 3)) 999)
+(display "multiline\ncomment\n")
+(put-nd! (list 'a "b" 3) 999)
+(= (get-nd (list 'a "b" 3)) 999)
 
+(put-nd! (list 'a "b") -90)
+(= (get-nd (list 'a "b")) -90)
+
+;; summary
+;; As per the "Two-dimensional tables" diagram in chapter 3 but with variable number of keys
+;; without resorting to using lists as keys. Trying to store '(1 2): "a" and '(1 3): "b" would work
+;; but trying to store '(1 2): "a" and '(1): "b" will overwrite the first (which is sensible).
+;; It isn't very production ready though, checks are minimal.
+
+;; Exercise 3.26...
+;; Binary-tree tables
 
 
