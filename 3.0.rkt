@@ -893,3 +893,146 @@ my-deque
 ;; Exercise 3.25
 ;; N-dimensional tables
 
+;; Note, I don't really know why you'd want to do it this way, when you
+;; could just treat the list of keys as a key and use a 1-d table...
+;; I guess it's more space-efficient for lots of similar, very long, keys
+
+;; We'll assume that *table* has been stripped from the beginning of table.
+;; Get the value or sub-table associated with key
+(define (recursive-lookup key table)
+  (cond ((null? table) false)
+        ((equal? (caar table) key) (cdr (car table)))
+        (else (recursive-lookup key (cdr table)))))
+
+(newline)
+"Recursive Lookup"
+(equal? (recursive-lookup 'a (list (cons 'a 44))) 44)
+(equal? (recursive-lookup 'a (list (cons 'b 55) (cons 'a 'z))) 'z)
+(equal? (recursive-lookup 1 (list (list 1 (cons 2 "end")))) (list (cons 2 "end")))
+;(recursive-lookup 1 (list (list 1 (cons 2 "end"))))
+(not (recursive-lookup 'c (list (cons 'b 55) (cons 'a 'z))))
+
+(define (recursive-lookups keys table)
+  (cond ((null? table) false)
+        ((null? keys) table)
+        ((equal? (caar table) (car keys)) (recursive-lookups (cdr keys) (cdr (car table))))))
+
+
+;; A recursive lookup returning the first match or false
+(define (lookup-2 keys table)
+  (cond ((null? table) false)
+        ((null? keys) table)
+        ((equal? (caadr table) (car keys)) (lookup-2 (cdr keys) (car (cdr table))))))
+
+(newline)
+"Test lookup-2"
+(equal? (lookup-2 '() (cons 'math 43)) (cons 'math 43))
+(equal? (lookup-2 (list 2) (list 1 (cons 2 "oo"))) (cons 2 "oo"))
+
+;; Like lookup-2 but to be used at the root level of the table
+;; from the second element onwards
+(define (lookup-1 keys table)
+  (cond ((null? table) false) ; table is completely empty
+        ((null? keys) (error "Must have one or more key"))
+        ((equal? (caar table) (car keys)) (lookup-2 (cdr keys) (car table)))
+        (else (lookup-1 keys (cdr table))))) ; didn't match 
+
+(newline)
+"Test lookup-1"
+(equal? false (lookup-1 (list "some key") '()))
+(equal? (cons 2 "yes") (lookup-1 (list 1 2) (list (list 1 (cons 2 "yes")))))
+(equal? (cons 3 "yes") (lookup-1 (list 3) (list (cons 'math 1) (cons 3 "yes"))))
+(equal? (cons 6 "yes") (lookup-1 (list 4 5 6) (list (cons 1 "no")
+                                                    (cons 2 "no")
+                                                    (list 4 (list 5 (cons 6 "yes"))))))
+
+; Insert value into table at the position given by keys
+; (a position that must not exist already)
+(define (insert-1! keys value table)
+  (if (null? (keys))
+      (set-cdr! table (cons (cons 1 "yes") (cdr table)))
+      (error "error!!")))
+
+(newline)
+"Test insert-1!"
+(define test-table-1 (list '*table*))
+(insert-1! (list 1) "yes" test-table-1)
+(equal? test-table-1 (list '*table* (cons 1 "yes")))
+
+;(equal? (lookup-2 (list 1) (list (cons 1 "end")))) 
+
+(define (make-nd-table)
+  (let ((local-table (list '*table*)))
+    (define (lookup keys)
+      (let ((answer (lookup-1 keys (cdr local-table))))
+        (if answer
+            (cdr answer)
+            false)))
+    (define (insert! keys value)
+      (let ((answer (lookup-1 keys (cdr local-table))))
+        (if answer
+            (begin (set-cdr! answer value) 'overwritten)
+            (begin (insert-1! keys value local-table) 'ok))))  
+;    (define (lookup key-1 key-2)
+;      (let ((subtable 
+;             (my-assoc key-1 (cdr local-table))))
+;        (if subtable
+;            (let ((record 
+;                   (my-assoc key-2 
+;                          (cdr subtable))))
+;              (if record (cdr record) false))
+;            false)))
+;    (define (insert! key-1 key-2 value)
+;      (let ((subtable 
+;             (my-assoc key-1 (cdr local-table))))
+;        (if subtable
+;            (let ((record 
+;                   (my-assoc key-2 
+;                          (cdr subtable))))
+;              (if record
+;                  (set-cdr! record value)
+;                  (set-cdr! 
+;                   subtable
+;                   (cons (cons key-2 value)
+;                         (cdr subtable)))))
+;            (set-cdr! 
+;             local-table
+;             (cons (list key-1
+;                         (cons key-2 value))
+;                   (cdr local-table)))))
+;      'ok)
+    (define (dispatch m)
+      (cond ((eq? m 'lookup-proc) lookup)
+            ((eq? m 'insert-proc!) insert!)
+            (else (error "Unknown operation: 
+                          TABLE" m))))
+    dispatch))
+
+;(define operation-table (make-table))
+;(define get (operation-table 'lookup-proc))
+;(define put (operation-table 'insert-proc!))
+
+(newline)
+"Test make-nd-table"
+
+(define my-nd-table (make-nd-table))
+(define put-nd! (my-nd-table 'insert-proc!))
+(define get-nd (my-nd-table 'lookup-proc))
+
+; Insert into empty table
+(put-nd! (list 1) "yes")
+(equal? (get-nd (list 1)) "yes")
+
+; Overwrite value
+(put-nd! (list 1) "nope")
+(equal? (get-nd (list 1)) "nope")
+
+; Insert into populated table
+(equal? 'ok (put-nd! (list 'a 'b 'c) "yellow"))
+(equal? (get-nd (list 'a 'b 'c)) "yellow")
+
+;(put-nd! (list 'a "b" 3) 999)
+;(= (get-nd (list 'a "b" 3)) 999)
+
+
+
