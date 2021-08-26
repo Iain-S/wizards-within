@@ -1086,6 +1086,11 @@ coment?"
 (define (bt-set-value! tree value)
   (set-car! (cdr tree) value))
 
+;; ToDo Make a helper to return an empty node (list somekey 'empty-value '() '())
+
+(define (make-empty-node key)
+  (list key 'empty-value '() '()))
+
 ; find a matching node or create one
 (define (bt-find-or-create! key tree)
   (cond
@@ -1093,7 +1098,7 @@ coment?"
     ((= key (bt-get-key tree)) tree)
     ; else if key < tree.key and lh is null, create and return an new lh
     ((and (null? (bt-get-left tree)) (< key (bt-get-key tree)))
-     (let ((new-left (list key 'empty-value '() '())))
+     (let ((new-left (make-empty-node key)))
        (set-car! (cddr tree) new-left)
        new-left))
     ; else if key < tree.key and lh is not null, call ourselves again
@@ -1101,15 +1106,15 @@ coment?"
      (bt-find-or-create! key (bt-get-left tree)))
     ; else, if key > tree.key and rh is null, create and return new rh
     ((and (null? (bt-get-right tree)) (> key (bt-get-key tree)))
-     (let ((new-right (list key 'empty-value '() '())))
+     (let ((new-right (make-empty-node key)))
        (set-car! (cdddr tree) new-right)
        new-right))
     ; else if key > tree.key and rh is not null, call ourselves again
     ((> key (bt-get-key tree))
      (bt-find-or-create! key (bt-get-right tree)))
     (else (error "bt-find-or-create! this should not happen"))))
-            
-"Test find-or-create!"
+
+"Test bt-find-or-create!"
 (equal? (list 1 "xx" '() '()) (bt-find-or-create! 1 (list 1 "xx" '() '())))
 (equal? (list 2 'empty-value '() '()) (bt-find-or-create! 2 (list 1 "xx" '() '())))
 (define test-tree-1 (list 1 "xx" '() '()))
@@ -1118,39 +1123,111 @@ coment?"
 (bt-find-or-create! 1.1 test-tree-1)
 (equal? test-tree-1 expected-tree-1)
 
+
+; find a matching node with many keys (or create one)
+(define (bt-find-or-create-rec! keys tree)
+  (let ((found-or-created (bt-find-or-create! (car keys) tree)))
+    (if (null? (cdr keys))
+        ; only one item in keys so return our node
+        found-or-created
+        ; else
+        (begin
+          (if (not (pair? (bt-get-value found-or-created)))
+              ; this "value" needs to be overwritten with an empty node
+              (bt-set-value! found-or-created (make-empty-node (cadr keys))))
+          (bt-find-or-create-rec! (cdr keys) (bt-get-value found-or-created))))))
+
+"Test bt-find-or-create-rec!"
+(let ((answer (bt-find-or-create-rec! (list 1) (list 2 "a val" '() '()))))
+  (if (equal? answer (list 1 'empty-value '() '()))
+      #t
+      (begin (display answer)
+             (newline)
+             #f)))
+
+"Test recursive find"
+(let ((second-level (list 9 'winning '() '())))
+  (let ((first-level (list 2 second-level '() '())))
+    (let ((answer (bt-find-or-create-rec! (list 2 9) first-level)))
+      (if (equal? answer second-level)
+          #t
+          (begin (display answer)
+                 (newline)
+                 #f)))))
+
+"Test recursive create"
+(let ((expected (list 9 'empty-value '() '())))
+  (let ((test-tree (list 2 "any non-pair" '() '())))
+    (let ((answer (bt-find-or-create-rec! (list 2 9) test-tree)))
+      (if (equal? answer expected)
+          #t
+          (begin (display answer)
+                 (newline)
+                 (display expected)
+                 (newline)
+                 #f)))))
+
+
+;(eq? (bt-find-or-create-rec! (list 1) (list 2 "a val" '() '()))
+;     (list 1 'empty-value '() '()))
+
 ; Our nodes are in the form
 ; (list key value left right)
+; where value, left and right can all be nodes themselves.
+; You SHOULD NOT try to store a list in value (as we use pair? to determine
+; whether value is a subtree).
 (define (bt-make-table)
   (let ((local-btree '()))
     (define (is-empty?)
       (null? local-btree))
     (define (lookup keys)
-      #f)
+      (let ((found-value (bt-get-value (bt-find-or-create-rec! keys local-btree))))
+        (if (equal? found-value 'empty-value)
+            ; the key wasn't in the tree and we just created it (oops)!
+            'error_key_not_already_in_table
+            ; else, we found our entry
+            found-value)))      
     (define (get-raw-tree)
       local-btree)
     (define (insert! keys value)
       (if (is-empty?)
           ; if empty, add a root node
-          (begin (set! local-btree (list (car keys) value '() '()))
-                 'inserted)
-          ; else, use our procedure to find/create an appropriate node
-          (let ((found-or-created (bt-find-or-create! (car keys) local-btree)))
-            (begin
-              (if (eq? (bt-get-value found-or-created) 'empty-value)
-                  (display "creating\n")
-                  (display "overwriting\n"))
-              (bt-set-value! found-or-created value)
-              'inserted))))
+          (set! local-btree (make-empty-node (car keys))))
+      ; now use our procedure to find/create an appropriate node
+      (let ((found-or-created (bt-find-or-create-rec! keys local-btree)))
+        (begin
+          (if (eq? (bt-get-value found-or-created) 'empty-value)
+              (display "creating\n")
+              (display "overwriting\n"))
+          (bt-set-value! found-or-created value)
+          'inserted)))
     (define (dispatch m)
       (cond ((eq? m 'lookup-proc) lookup)
             ((eq? m 'insert-proc!) insert!)
             ((eq? m 'is-empty?) is-empty?)
+            ((eq? m 'get-raw) get-raw-tree)
             (else (error "Unknown operation: 
                           TABLE" m))))
     dispatch))
 
 
 "Test binary tree table"
+(define my-btable-1 (bt-make-table))
+((my-btable-1 'insert-proc!) (list 1 2) "myvalB")
+(equal? ((my-btable-1 'get-raw)) (list 1 (list 2 "myvalB" '() '()) '() '()))
+
+(let ((expected (list 1 (list 2 "myvalB" '() '()) '() '())))
+  (let ((test-tree (bt-make-table)))
+    ((test-tree 'insert-proc!) (list 1 2) "myvalB")
+    (let ((answer ((test-tree 'get-raw))))
+      (if (equal? answer expected)
+          #t
+          (begin (display answer)
+                 (newline)
+                 (display expected)
+                 (newline)
+                 #f)))))
+
 
 "Test is-empty?"
 (define my-btable (bt-make-table))
@@ -1158,35 +1235,14 @@ coment?"
 
 (equal? ((my-btable 'insert-proc!) (list 1) "a") 'inserted)
 (equal? ((my-btable 'insert-proc!) (list 2) "a") 'inserted)
+((my-btable 'insert-proc!) (list 1) "a")
+((my-btable 'insert-proc!) (list 2) "b")
+((my-btable 'insert-proc!) (list 3) "c")
+((my-btable 'insert-proc!) (list 3 4) "cd")
+(equal? ((my-btable 'lookup-proc) (list 3 4 )) "cd")
 
-;(not ((my-btable 'lookup-proc) (list 1 2)))
-;(equal? ((my-btable 'insert-proc!) (list 1) "a") 'ok)
-;(not ((my-btable 'is-empty?)))
+(equal? ((my-btable 'lookup-proc) (list 3 4 5)) 'error_key_not_already_in_table)
 
-
-
-
-;(define my-bt-table (make-bt-table))
-
-
-; Insert into empty table
-;(put-bt! (list 1 2) "yes")
-;(equal? (get-bt (list 1 2)) "yes")
-
-
-;(newline)
-; Overwrite value
-;(put-bt! (list 1) "nope")
-;(equal? (get-bt (list 1)) "nope")
-
-
-; Insert into populated table
-;(equal? 'ok (put-bt! (list 'a 'b 'c) "yellow"))
-;(equal? (get-bt (list 'a 'b 'c)) "yellow")
-
-;(display "multiline\ncomment\n")
-;(put-bt! (list 'a "b" 3) 999)
-;(= (get-bt (list 'a "b" 3)) 999)
-
-;(put-bt! (list 'a "b") -90)
-;(= (get-bt (list 'a "b")) -90)
+((my-btable 'insert-proc!) (list 3 4 9 9 9 10001) "abra kadabra")
+(equal? ((my-btable 'lookup-proc) (list 3 4 9 9 9 10001)) "abra kadabra")
+(equal? ((my-btable 'lookup-proc) (list 2)) "b")
