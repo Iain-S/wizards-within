@@ -899,23 +899,23 @@ my-deque
 
 ;; We'll assume that *table* has been stripped from the beginning of table.
 ;; Get the value or sub-table associated with key
-(define (recursive-lookup key table)
-  (cond ((null? table) false)
-        ((equal? (caar table) key) (cdr (car table)))
-        (else (recursive-lookup key (cdr table)))))
+;(define (recursive-lookup key table)
+;  (cond ((null? table) false)
+;        ((equal? (caar table) key) (cdr (car table)))
+;        (else (recursive-lookup key (cdr table)))))
 
-(newline)
-"Recursive Lookup"
-(equal? (recursive-lookup 'a (list (cons 'a 44))) 44)
-(equal? (recursive-lookup 'a (list (cons 'b 55) (cons 'a 'z))) 'z)
-(equal? (recursive-lookup 1 (list (list 1 (cons 2 "end")))) (list (cons 2 "end")))
+;(newline)
+;"Recursive Lookup"
+;(equal? (recursive-lookup 'a (list (cons 'a 44))) 44)
+;(equal? (recursive-lookup 'a (list (cons 'b 55) (cons 'a 'z))) 'z)
+;(equal? (recursive-lookup 1 (list (list 1 (cons 2 "end")))) (list (cons 2 "end")))
 ;(recursive-lookup 1 (list (list 1 (cons 2 "end"))))
-(not (recursive-lookup 'c (list (cons 'b 55) (cons 'a 'z))))
+;(not (recursive-lookup 'c (list (cons 'b 55) (cons 'a 'z))))
 
-(define (recursive-lookups keys table)
-  (cond ((null? table) false)
-        ((null? keys) table)
-        ((equal? (caar table) (car keys)) (recursive-lookups (cdr keys) (cdr (car table))))))
+;(define (recursive-lookups keys table)
+;  (cond ((null? table) false)
+;        ((null? keys) table)
+;        ((equal? (caar table) (car keys)) (recursive-lookups (cdr keys) (cdr (car table))))))
 
 
 ;; A recursive lookup returning the first match or false
@@ -1043,5 +1043,150 @@ coment?"
 
 ;; Exercise 3.26...
 ;; Binary-tree tables
+;                      table
+;                        |
+;                        v
+;                *table* ,  |   
+;                           |
+;                           v
+;                       key, value,  /, \
+;                                   /    \
+;                                  /      \___________> higher key, value, l, r
+;                                 v
+;                           lower key, value, l, r
+;
+;
+;; Each node in our table is
+;; (list key value left right)
+;; where left and right are (possibly empty) trees
+;; and value is either a single value or a tree
+
+; find node traverses a binary tree to find node with a certain key,
+; creating it if it doesn't already exist
+
+; helper methods
+
+;; get the key
+(define (bt-get-key tree)
+  (car tree))
+
+;; get the value
+(define (bt-get-value tree)
+  (cadr tree))
+
+;; get the lh branch
+(define (bt-get-left tree)
+  (caddr tree))
+
+;; get the rh branch
+(define (bt-get-right tree)
+  (cadddr tree))
+
+;; set/reset the value
+(define (bt-set-value! tree value)
+  (set-car! (cdr tree) value))
+
+; find a matching node or create one
+(define (bt-find-or-create! key tree)
+  (cond
+    ; if key = tree.key, return the tree
+    ((= key (bt-get-key tree)) tree)
+    ; else if key < tree.key and lh is null, create and return an new lh
+    ((and (null? (bt-get-left tree)) (< key (bt-get-key tree)))
+     (let ((new-left (list key 'empty-value '() '())))
+       (set-car! (cddr tree) new-left)
+       new-left))
+    ; else if key < tree.key and lh is not null, call ourselves again
+    ((< key (bt-get-key tree))
+     (bt-find-or-create! key (bt-get-left tree)))
+    ; else, if key > tree.key and rh is null, create and return new rh
+    ((and (null? (bt-get-right tree)) (> key (bt-get-key tree)))
+     (let ((new-right (list key 'empty-value '() '())))
+       (set-car! (cdddr tree) new-right)
+       new-right))
+    ; else if key > tree.key and rh is not null, call ourselves again
+    ((> key (bt-get-key tree))
+     (bt-find-or-create! key (bt-get-right tree)))
+    (else (error "bt-find-or-create! this should not happen"))))
+            
+"Test find-or-create!"
+(equal? (list 1 "xx" '() '()) (bt-find-or-create! 1 (list 1 "xx" '() '())))
+(equal? (list 2 'empty-value '() '()) (bt-find-or-create! 2 (list 1 "xx" '() '())))
+(define test-tree-1 (list 1 "xx" '() '()))
+(define expected-tree-1 (list 1 "xx" '() (list 2 'empty-value (list 1.1 'empty-value '() '()) '())))
+(bt-find-or-create! 2 test-tree-1)
+(bt-find-or-create! 1.1 test-tree-1)
+(equal? test-tree-1 expected-tree-1)
+
+; Our nodes are in the form
+; (list key value left right)
+(define (bt-make-table)
+  (let ((local-btree '()))
+    (define (is-empty?)
+      (null? local-btree))
+    (define (lookup keys)
+      #f)
+    (define (get-raw-tree)
+      local-btree)
+    (define (insert! keys value)
+      (if (is-empty?)
+          ; if empty, add a root node
+          (begin (set! local-btree (list (car keys) value '() '()))
+                 'inserted)
+          ; else, use our procedure to find/create an appropriate node
+          (let ((found-or-created (bt-find-or-create! (car keys) local-btree)))
+            (begin
+              (if (eq? (bt-get-value found-or-created) 'empty-value)
+                  (display "creating\n")
+                  (display "overwriting\n"))
+              (bt-set-value! found-or-created value)
+              'inserted))))
+    (define (dispatch m)
+      (cond ((eq? m 'lookup-proc) lookup)
+            ((eq? m 'insert-proc!) insert!)
+            ((eq? m 'is-empty?) is-empty?)
+            (else (error "Unknown operation: 
+                          TABLE" m))))
+    dispatch))
 
 
+"Test binary tree table"
+
+"Test is-empty?"
+(define my-btable (bt-make-table))
+((my-btable 'is-empty?))
+
+(equal? ((my-btable 'insert-proc!) (list 1) "a") 'inserted)
+(equal? ((my-btable 'insert-proc!) (list 2) "a") 'inserted)
+
+;(not ((my-btable 'lookup-proc) (list 1 2)))
+;(equal? ((my-btable 'insert-proc!) (list 1) "a") 'ok)
+;(not ((my-btable 'is-empty?)))
+
+
+
+
+;(define my-bt-table (make-bt-table))
+
+
+; Insert into empty table
+;(put-bt! (list 1 2) "yes")
+;(equal? (get-bt (list 1 2)) "yes")
+
+
+;(newline)
+; Overwrite value
+;(put-bt! (list 1) "nope")
+;(equal? (get-bt (list 1)) "nope")
+
+
+; Insert into populated table
+;(equal? 'ok (put-bt! (list 'a 'b 'c) "yellow"))
+;(equal? (get-bt (list 'a 'b 'c)) "yellow")
+
+;(display "multiline\ncomment\n")
+;(put-bt! (list 'a "b" 3) 999)
+;(= (get-bt (list 'a "b" 3)) 999)
+
+;(put-bt! (list 'a "b") -90)
+;(= (get-bt (list 'a "b")) -90)
