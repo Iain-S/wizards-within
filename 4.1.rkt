@@ -280,7 +280,7 @@
 ; Rewrite eval so that dispatch is does in a "data-
 ; directed" style. Compare with d-d differentiation
 ; in 2.73. 
-; See ex4.3.rkt
+; See ex4.x.rkt
 
 
 

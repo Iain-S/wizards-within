@@ -320,6 +320,7 @@
 (define (apply-primitive-procedure proc args)
   (apply-in-underlying-scheme
    (primitive-implementation proc) args))
+
 (define (mapply procedure arguments)
   (cond ((primitive-procedure? procedure)
          (apply-primitive-procedure 
@@ -356,6 +357,9 @@
         (list 'null? null?)
         ;⟨more primitives⟩
         (list '+ +)
+        ; These are the solution to Exercise 4.4
+        (list 'and (lambda (x y) (if x y #f)))
+        (list 'or (lambda (x y) (if x x y)))
         ))
 
 (define (primitive-procedure-names)
@@ -414,3 +418,12 @@
 
 (eval '"a" the-global-environment)
 (eval '(+ 11 99) the-global-environment)
+
+; not sure why this works for 'true and 'false but not for '#t and '#f
+(eq? (eval '(and false true) the-global-environment) false)
+(eq? (eval '(or 9 false) the-global-environment) 9)
+
+"Exercise 4.5"
+; Add the following special cond form to our evaluator
+(cond (12 => +)
+        (else "what?"))
