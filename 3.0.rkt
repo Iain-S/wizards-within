@@ -1246,3 +1246,7 @@ coment?"
 ((my-btable 'insert-proc!) (list 3 4 9 9 9 10001) "abra kadabra")
 (equal? ((my-btable 'lookup-proc) (list 3 4 9 9 9 10001)) "abra kadabra")
 (equal? ((my-btable 'lookup-proc) (list 2)) "b")
+
+;; Exercise ...
+
+
