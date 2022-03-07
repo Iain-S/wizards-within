@@ -12,15 +12,13 @@ There are other ways to work through SICP, like using Emacs or repl.it but I hav
 1. The DrRacket SICP [support package](https://github.com/sicp-lang/sicp) may be required.
 1. Use `#lang sicp` at the top of any new .rkt file.
 
-## Notes
+## Organisation
 
-### General
+One file per chapter, or sub-chapter, seems to be a good compromise: if you try to fit more than that you get too many naming conflicts.
 
-1. One file per chapter, or sub-chapter, seems to be a good compromise: if you try to fit more than that you get too many naming conflicts.
+## Testing
 
-### Testing
-
-There is no (good) reason not to do TDD when working on the exercises. For me, this looks something like
+Doing TDD for the exercises can be done with some test helpers:
 
 ```scheme
 ; Exercise x.y: Try to write a Fibonacci function.
@@ -59,3 +57,34 @@ expected: 7  actual: 21
 #f
 ```
 
+## Imports
+
+It took some trial and error to find that you can import functions defined in other files like so
+
+**provide-hello.rkt**
+
+```scheme
+#lang sicp
+
+(#%provide hello)
+
+(define (hello)
+  "Hello, World"
+  )
+```
+
+
+and use it like this
+
+**require-hello.rkt**
+
+```scheme
+#lang sicp
+
+; Remember to start DrRacket from the right directory for this to work
+(#%require "provide-hello.rkt")
+
+(hello)
+```
+
+See also, https://docs.racket-lang.org/sicp-manual/SICP_Language.html
