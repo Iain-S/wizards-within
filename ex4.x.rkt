@@ -207,10 +207,20 @@
         consequent 
         alternative))
 (define (expand-clauses clauses)
+  (define (special-cond-case? exp)
+    (eq? (cadr exp) '=>))
+  (display "evaluating clauses\n")
+  (display clauses)
+  (display "\n")
+
   (if (null? clauses)
       'false     ; no else clause
       (let ((first (car clauses))
             (rest (cdr clauses)))
+
+        (display "first: ")
+        (display first)
+        
         (if (cond-else-clause? first)
             (if (null? rest)
                 (sequence->exp 
@@ -218,11 +228,18 @@
                 (error "ELSE clause isn't 
                         last: COND->IF"
                        clauses))
-            (make-if (cond-predicate first)
-                     (sequence->exp 
-                      (cond-actions first))
-                     (expand-clauses 
-                      rest))))))
+            (if (special-cond-case? first)
+                (make-if (cond-predicate first)
+                         ; apply caddr to car
+                         (list (caddr first) (cond-predicate first))
+                         (expand-clauses 
+                          rest)
+                         )
+                (make-if (cond-predicate first)
+                         (sequence->exp 
+                          (cond-actions first))
+                         (expand-clauses 
+                          rest)))))))
 (define (lookup-variable-value var env)
   (define (env-loop env)
     (define (scan vars vals)
@@ -420,10 +437,27 @@
 (eval '(+ 11 99) the-global-environment)
 
 ; not sure why this works for 'true and 'false but not for '#t and '#f
-(eq? (eval '(and false true) the-global-environment) false)
-(eq? (eval '(or 9 false) the-global-environment) 9)
+(eq? (eval '(and false true) the-global-environment)
+     false)
+(eq? (eval '(or 9 false) the-global-environment)
+     9)
 
 "Exercise 4.5"
 ; Add the following special cond form to our evaluator
-(cond (12 => +)
-        (else "what?"))
+(define (double x) (* x 2))
+; cond <test> => <recipient>
+(cond (12 => double)
+      (else "what?")  ; optional else
+      )
+
+; See special-cond-case? in expand-clauses
+(eq?
+ (eval '(cond ((car '((4 5))) => car)) the-global-environment)
+ 4)
+
+; Check that we haven't broken the normal cond syntax
+(eq?
+ (eval '(cond ((car '((4 5))) car)) the-global-environment)
+ 4)
+
+(eval '(cond (#t #t)) the-global-environment)
