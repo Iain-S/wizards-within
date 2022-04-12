@@ -300,6 +300,9 @@
      (lambda-body exp)
      env))
   (put 'op 'lambda (partial my-lambda env))
+  (define (my-let exp env)
+    (eval (let->combination exp) env))
+  (put 'op 'let (partial my-let env))
   (define (my-begin exp env)
     (eval-sequence
      (begin-actions exp)
@@ -456,8 +459,63 @@
  4)
 
 ; Check that we haven't broken the normal cond syntax
-(eq?
- (eval '(cond ((car '((4 5))) car)) the-global-environment)
- 4)
+; (note that booleans don't seem to be well supported yet so don't use #t/#f)
+(eq? (eval '(cond (9 8)) the-global-environment)
+     8)
 
-(eval '(cond (#t #t)) the-global-environment)
+
+"Exercise 4.6"
+; Lets can be converted to lambdas so this...
+(let ((the (+ 1 2)) (blob (- 0 9)))
+  (display the)
+  (display "\n"))
+
+; ...is equivalent to defining and then calling this...
+((lambda (the blob)
+   (display the)
+   (display "\n"))
+ (+ 1 2) (- 0 9))
+
+; Thus, we write a transformation that reduces let expressions to lambdas
+(define (let->combination exp)
+  (cons (list 'lambda (get-let-variables exp) (get-let-body exp)) (get-let-values exp)))
+
+; The simplest example might be
+(define test-let '(let ((a b)) a))
+(define test-lambda '((lambda (a) a) b))
+
+(define (get-let-variables let-exp)
+  (define (inner l)
+    (if (null? l)
+        '()
+        (cons (caar l) (inner (cdr l)))))
+  (inner (cadr let-exp)))
+
+(define (get-let-values let-exp)
+  (define (inner l)
+    (if (null? l)
+        '()
+        (cons (car (cdr (car l))) (inner (cdr l)))))
+  (inner (cadr let-exp)))
+
+(define (get-let-body let-exp)
+  ; the body is the third item
+  (car (cdr (cdr let-exp)))
+  )
+
+(eq? (car
+ (get-let-variables test-let)
+ ) 'a)
+(eq? (car
+      (get-let-values test-let)
+)'b)
+(eq? (get-let-body test-let) 'a)
+
+;(eq?
+ (let->combination '(let ((a (+ 5 1))) a))
+ ;'((lambda (a) a)(+ 5 1)))
+
+(eq? (eval '(let ((a (+ 5 1))) a) the-global-environment) 6)
+
+
+"Exercise 4.7"
