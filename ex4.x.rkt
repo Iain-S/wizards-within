@@ -209,18 +209,11 @@
 (define (expand-clauses clauses)
   (define (special-cond-case? exp)
     (eq? (cadr exp) '=>))
-  (display "evaluating clauses\n")
-  (display clauses)
-  (display "\n")
 
   (if (null? clauses)
       'false     ; no else clause
       (let ((first (car clauses))
             (rest (cdr clauses)))
-
-        (display "first: ")
-        (display first)
-        
         (if (cond-else-clause? first)
             (if (null? rest)
                 (sequence->exp 
@@ -256,6 +249,7 @@
           (scan (frame-variables frame)
                 (frame-values frame)))))
   (env-loop env))
+
 (define (application? exp) (pair? exp))
 (define (operator exp)
   (car exp))
@@ -291,8 +285,8 @@
   
   ; Make all stored procedures funcs of one arg
   ; (exp) only.
-  (put 'op 'define (partial eval-assignment env))
-  (put 'op 'set! (partial eval-definition env))
+  (put 'op 'define (partial eval-definition env))
+  (put 'op 'set! (partial eval-assignment env))
   (put 'op 'if (partial eval-if env))
   (define (my-lambda exp env)
     (make-procedure
@@ -311,6 +305,14 @@
   (define (my-cond exp env)
     (eval (cond->if exp) env))
   (put 'op 'cond (partial my-cond env))
+  (define (my-let* exp env)
+    (eval (let*->nested-lets exp) env))
+  (put 'op 'let* (partial my-let* env))
+  (define (make-unbound! exp env)
+    ; Remember that we get the whole expression so need to cadr
+    (unset-variable-value! (cadr exp) env))
+  (put 'op 'make-unbound! (partial make-unbound! env))
+
   
   ; Evaluate an expression in an environment
   (cond ((self-evaluating? exp)
@@ -380,6 +382,7 @@
         ; These are the solution to Exercise 4.4
         (list 'and (lambda (x y) (if x y #f)))
         (list 'or (lambda (x y) (if x x y)))
+        ;(list 'map map) ; 4.14
         ))
 
 (define (primitive-procedure-names)
@@ -424,7 +427,7 @@
 (define input-prompt  ";;; M-Eval input:")
 (define output-prompt ";;; M-Eval value:")
 
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (driver-loop)
   ;; You can use this to start a REPL
   (prompt-for-input input-prompt)
@@ -517,5 +520,119 @@
 
 (eq? (eval '(let ((a (+ 5 1))) a) the-global-environment) 6)
 
-
 "Exercise 4.7"
+
+; This is how we want a let* to work
+(define nested-let-input
+  '(let* ((a 10)
+          (x (* a 2)))
+     x))
+
+; It will need to convert to this internally
+(define nested-let-expected
+  '(let ((a 10))
+    (let ((x (* a 2)))
+      x)))
+
+(define (let*->nested-lets exp)
+  ; the second item should be a list of assignments
+  (if (null? (cadr exp))
+      (car (cdr (cdr exp)))
+      (list 'let
+            (list (car (cadr exp)))
+            (let*->nested-lets (list 'let* (cdr (cadr exp)) (car (cddr exp)))))))
+; (let ((b) (c) (d)) e)
+; should become
+; (let ((b)) (let ((c)) (let ((d)) e)))
+
+; visually check that these are the same
+(let*->nested-lets nested-let-input)
+nested-let-expected
+
+; Q) If we have already implemented let and we want to extend the evaluator to handle let*,
+;    is it sufficient to add a clause to eval whose action is
+;    (eval (let*->nested-lets exp) env)
+;    or must we explicitly expand let* in terms of non-derived expressions?
+; A) The former. let* gets turned into let, which gets turned into lambda. Neat.
+(eq? (eval '(let* ((a 10)
+                   (x (+ a 2)))
+              x)
+           the-global-environment)
+     12)
+
+"Exercise 4.8"
+; I think I'll skip this one
+
+"Exercise 4.9"
+; (while condition expression) would this require expression to set!?
+; (while (< x 10) ((set! x (+ x 3)))
+; (for 10 (lambda (i) i*2)) list comprehensions?
+
+"Exercise 4.10 4.11. 4.12"
+; I think I'll skip these
+
+"Exercise 4.13"
+; See also the make-unbound! procedure you can call whilst in driver-loop
+
+
+; find the position of item a in list l
+(define (find-pos-of a l)
+  (define (scan index thelist)
+    (cond ((null? thelist) -1)
+          ((eq? (car thelist) a) index)
+          (else (scan (+ index 1) (cdr thelist)))))
+  (scan 0 l))
+
+(eq? (find-pos-of 99 '(1 2 3)) -1)
+(eq? (find-pos-of 1 '(1 2 3)) 0)
+(eq? (find-pos-of 3 '(1 2 3)) 2)
+
+; return l without the element at i
+(define (drop-element i l)
+  (define (inner end remaining)
+    ;(display end)
+    ;(display remaining)
+    ;(display "\n")
+    (cond ((null? end) end)
+          ((= 0 remaining) (inner (cdr end) (- remaining 1)))
+          (else (cons (car end) (inner (cdr end) (- remaining 1))))))
+  (inner l i))
+
+(drop-element 0 '(1 2 3)) ; should be (2 3)
+(drop-element 2 '(1 2 3)) ; should be (1 2)
+
+(define (unset-variable-value! var environ)
+    (define (env-loop env)
+      (define (scan frame)
+        (let ((pos (find-pos-of var (frame-variables frame))))
+          (begin
+            ; (display (frame-variables frame))
+            ; (display var)
+            ; (display pos)
+            ; (display "\n")      
+            (if (= -1 pos)
+                (env-loop 
+                 (enclosing-environment env))
+                (begin  ; else replace frame vars and vals
+                  (set-car! frame (drop-element pos (car frame)))
+                  (set-cdr! frame (drop-element pos (cdr frame))))))))
+      (begin
+        ; (display "looping")
+        ; (display "\n")
+        (if (eq? env the-empty-environment)
+            (error "Unbound variable: SET!" var)
+            (let ((frame (first-frame env)))
+              (scan frame)))))
+    (env-loop environ))
+
+; 4.1.4 Running the Evaluator as a Program
+
+"Exercise 4.15"
+; The halting problem
+
+
+; 4.1.6 Internal Definitions
+
+
+
+
